@@ -454,7 +454,9 @@ pub const Decompressor = struct {
 test "compress gzip with zig interface" {
     const allocator = std.testing.allocator;
     var fifo = std.fifo.LinearFifo(u8, .Dynamic).init(allocator);
+    var temp_fifo = std.fifo.LinearFifo(u8, .Dynamic).init(allocator);
     defer fifo.deinit();
+    defer temp_fifo.deinit();
 
     // compress with zlib
     const input = @embedFile("rfc1951.txt");
@@ -465,9 +467,8 @@ test "compress gzip with zig interface" {
     try cmp.flush();
 
     // decompress with zig std lib gzip
-    var dcmp = try std.compress.gzip.decompress(allocator, fifo.reader());
-    defer dcmp.deinit();
-    const actual = try dcmp.reader().readAllAlloc(allocator, std.math.maxInt(usize));
+    try std.compress.gzip.decompress(temp_fifo.reader(), fifo.writer());
+    const actual = try temp_fifo.reader().readAllAlloc(allocator, std.math.maxInt(usize));
     defer allocator.free(actual);
 
     try std.testing.expectEqualStrings(input, actual);
